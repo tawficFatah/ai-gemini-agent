@@ -1,3 +1,6 @@
 venv/
+__pycache__/
+*.pyc
+*.txt
 .env
 gemni_api_key.txt

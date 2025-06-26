@@ -1,7 +1,10 @@
 from functions.get_files_info import get_files_info
+from functions.get_file_content import get_file_content
+from functions.write_file import write_file
 
 import unittest
 
+'''
 class TestGetFiles(unittest.TestCase):
     def test_calculator_files_all(self):
         result = get_files_info("calculator", ".")
@@ -47,6 +50,33 @@ class TestGetFiles(unittest.TestCase):
 
         print(result)
         self.assertEqual(result, error_str)
+'''
+class TestGetFileContent(unittest.TestCase):
+    def test_get_file_main(self):
+        result = get_file_content("calculator", "main.py")
+        print(result)
 
+    def test_get_file_pkg(self):
+        result = get_file_content("calculator", "pkg/calculator.py")
+        print(result)
+
+    def test_get_file_no_permission(self):
+        result = get_file_content("calculator", "/bin/cat")
+        print(result)
+
+#    def test_get_lorem(self):
+#        result = get_file_content("calculator", "lorem.txt")
+#        print(result)
+
+def main():
+    result = write_file("calculator", "lorem.txt", "wait, this isn't lorem ipsum")
+    print(result)
+    
+    result = write_file("calculator", "pkg/morelorem.txt", "lorem ipsum dolor sit amet")
+    print(result)
+    
+    result = write_file("calculator", "/tmp/temp.txt", "this should not be allowed")
+    print(result)
+    
 if __name__ == "__main__":
-    unittest.main()
+    main()

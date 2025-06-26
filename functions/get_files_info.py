@@ -23,39 +23,42 @@ def get_files_info(working_directory: str, directory: str = None) -> str:
             'Error: "{directory}" is not a directory'
     """
 
+    abs_working_directory = os.path.abspath(working_directory)
+    target_directory = abs_working_directory
+    
+    # if the directory is not None
+    if directory:
+        target_directory = os.path.abspath(os.path.join(working_directory, directory))
+
     # First, let's check if the working direcotry is valid
     # if working_directory is invalid, return an error string
-    target_directory = working_directory if not directory or directory == "." else os.path.join(working_directory, directory)
-    try:
-        if  not os.path.isdir(os.path.abspath(working_directory)):
-            return f'Error: "{working_directory}" is not a directory'
+    if  not os.path.isdir(working_directory):
+        return f'Error: "{working_directory}" is not a directory'
 
-        # Next, let's check if the provided directotry is a directory
-        if  not os.path.isdir(os.path.abspath(target_directory)):
-            return f'Error: "{directory}" is not a directory'
-    except Exception as error:
-        return f"Error: {error}"
+    # Next, let's check if the provided directotry is a directory
+    if  not os.path.isdir(target_directory):
+        return f'Error: "{directory}" is not a directory'
 
     # If both directories are valid, we need to verify that the target directory is within
     # the working directory.
-    target_dir_abspath  = os.path.abspath(target_directory)
-    working_dir_abspath = os.path.abspath(working_directory)
-
-    if not target_dir_abspath.startswith(working_dir_abspath):
+    
+    if not target_directory.startswith(abs_working_directory):
         return f'Error: Cannot list "{directory}" as it is outside the permitted working directory'
 
-    files = get_list_of_dirs(target_directory)
- 
-    files_info = []
+    try:
+        files_info = []
+        files = get_list_of_dirs(target_directory)
     
-    for file in files:
-        file_full_path = os.path.join(target_directory, file)
+        for file in files:
+            file_full_path = os.path.join(target_directory, file)
 
-        files_info.append(get_file_info(file, file_full_path))
+            files_info.append(get_file_info(file, file_full_path))
 
-    files_info_str = "\n".join(files_info)
+        files_info_str = "\n".join(files_info)
     
-    return files_info_str
+        return files_info_str
+    except Exception as error:
+        return f"Error listing files: {error}"
 
 def get_list_of_dirs(working_directory: str) -> [str]:
     """Returns a list of strings representing the directories and/or files under the
