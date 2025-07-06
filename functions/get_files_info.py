@@ -1,4 +1,5 @@
 import os
+from google.genai import types
 
 def get_files_info(working_directory: str, directory: str = None) -> str:
     """Builds and returns a string representing the contents of a directory.

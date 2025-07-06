@@ -67,8 +67,7 @@ ai-gemini-agent/
 ├── README.md
 ├── requirements.txt
 ├── main.py
-├── tests/                 # For unit tests
-└── venv/
+├── tests.py                 # For unit tests
 ```
 
 ## ✍️ Author

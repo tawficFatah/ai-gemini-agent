@@ -2,6 +2,11 @@ import os, sys
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
+from config import SYSTEM_PROMPT
+from functions.schema_files import (
+    schema_get_files_info,
+    available_functions,
+)
 
 def load_api_key() -> str:
     """Loads the Gemini API key from the environment variables.
@@ -75,7 +80,14 @@ def generate_gemini_response(client: genai.Client, model: str, prompt: str) -> t
     """
     messages = [types.Content(role="user", parts=[types.Part(text=prompt)])]
     
-    return client.models.generate_content(model=model, contents=messages)
+    return client.models.generate_content(
+        model       = model,
+        contents    = messages,
+        config      = types.GenerateContentConfig(
+            tools = [available_functions],
+                    system_instruction = SYSTEM_PROMPT
+        ),
+    )
 
 def print_response_info(response: types.GenerateContentResponse, prompt: str, verbose: bool = False):
     """Prints the Gemini model response and optionally metadata.
@@ -85,8 +97,16 @@ def print_response_info(response: types.GenerateContentResponse, prompt: str, ve
         prompt (str): The user prompt submitted to the model.
         verbose (bool): Whether to print detailed token usage info.
     """
-    print(f"Gemini Response: {response.text}")
-    
+    #print(f"Full response: {response}")
+    #print(f"len(response.function_calls): {len(response.function_calls)}")
+
+    if len(response.function_calls) > 0:
+        # Let's print the function name and args
+        for function_call in response.function_calls:
+            print(f"Calling function: {function_call.name}({function_call.args})")
+    else:    
+        print(f"Gemini Response: {response.text}")
+
     if verbose:
         prompt_tokens = response.usage_metadata.prompt_token_count
         response_tokens = response.usage_metadata.candidates_token_count

@@ -1,6 +1,9 @@
 venv/
 __pycache__/
-*.pyc
+*.py[oc]
 *.txt
 .env
 gemni_api_key.txt
+
+# Virtual environments
+.venv
