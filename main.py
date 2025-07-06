@@ -3,10 +3,8 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 from config import SYSTEM_PROMPT
-from functions.schema_files import (
-    schema_get_files_info,
-    available_functions,
-)
+
+from call_function import available_functions
 
 def load_api_key() -> str:
     """Loads the Gemini API key from the environment variables.

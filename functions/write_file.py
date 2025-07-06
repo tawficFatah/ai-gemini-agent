@@ -8,6 +8,8 @@ def write_file(working_directory : str, file_path : str, content: str) -> str:
         to access or modify anything outside this directory.
 
         file_path (str): The file's path.
+        
+        content (str): The content of the file.
 
     Returns:
         str: Successfully wrote to "{file_path}" (content's size) characters written)
