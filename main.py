@@ -4,7 +4,7 @@ from google import genai
 from google.genai import types
 from config import SYSTEM_PROMPT
 
-from call_function import available_functions
+from call_function import (call_function, available_functions)
 
 def load_api_key() -> str:
     """Loads the Gemini API key from the environment variables.
@@ -34,25 +34,25 @@ def parse_user_prompt() -> str:
     Raises:
         SystemExit: If no prompt is provided via the command line.
     """
-    if len(sys.argv) < 2 or sys.argv[1] is None:
-        print("Usage: python3 main.py 'prompt message'")
+    verbose = "--verbose" in sys.argv
+    args = []
+    
+    for arg in sys.argv[1:]:
+        if not arg.startswith("--"):
+            args.append(arg)
+
+    if not args:
+        print("AI Code Assistant")
+        print('\nUsage: python main.py "your prompt here" [--verbose]')
+        print('Example: python main.py "How do add a function to the calculator?"')
         sys.exit(1)
+    
+    user_prompt = " ".join(args)
+    
+    if verbose:
+        print(f"User prompt: {user_prompt}\n")
 
-    return sys.argv[1]
-
-def parse_user_prompt() -> str:
-    """Parses the user prompt from the command line arguments.
-
-    Returns:
-        str: The user-provided prompt.
-
-    Raises:
-        SystemExit: If no prompt is provided via the command line.
-    """
-    if len(sys.argv) < 2 or sys.argv[1] is None:
-        print("Usage: python3 main.py 'prompt message'")
-        sys.exit(1)
-    return sys.argv[1]
+    return user_prompt
 
 def create_genai_client(api_key: str) -> genai.Client:
     """Creates a Gemini client instance using the given API key.
@@ -65,61 +65,62 @@ def create_genai_client(api_key: str) -> genai.Client:
     """
     return genai.Client(api_key=api_key)
 
-def generate_gemini_response(client: genai.Client, model: str, prompt: str) -> types.GenerateContentResponse:
+def generate_gemini_response(client: genai.Client, user_prompt: str, verbose: bool):
     """Generates a response using the Gemini model for the given prompt.
 
     Args:
         client (genai.Client): An authenticated Gemini client.
-        model (str): The name of the Gemini model to use.
         prompt (str): The user prompt to send to the model.
-
+        verbose (boolean): Used tp print extra info
+        
     Returns:
         types.GenerateContentResponse: The model's response object.
     """
-    messages = [types.Content(role="user", parts=[types.Part(text=prompt)])]
-    
-    return client.models.generate_content(
-        model       = model,
+    llm_model = "gemini-2.0-flash-001"
+
+    messages = [types.Content(role="user", parts=[types.Part(text = user_prompt)])]
+
+    response = client.models.generate_content(
+        model       = llm_model,
         contents    = messages,
         config      = types.GenerateContentConfig(
-            tools = [available_functions],
-                    system_instruction = SYSTEM_PROMPT
+            tools = [available_functions], system_instruction = SYSTEM_PROMPT
         ),
     )
 
-def print_response_info(response: types.GenerateContentResponse, prompt: str, verbose: bool = False):
-    """Prints the Gemini model response and optionally metadata.
-
-    Args:
-        response (types.GenerateContentResponse): The response from the Gemini model.
-        prompt (str): The user prompt submitted to the model.
-        verbose (bool): Whether to print detailed token usage info.
-    """
-    #print(f"Full response: {response}")
-    #print(f"len(response.function_calls): {len(response.function_calls)}")
-
-    if len(response.function_calls) > 0:
-        # Let's print the function name and args
-        for function_call in response.function_calls:
-            print(f"Calling function: {function_call.name}({function_call.args})")
-    else:    
-        print(f"Gemini Response: {response.text}")
-
     if verbose:
-        prompt_tokens = response.usage_metadata.prompt_token_count
-        response_tokens = response.usage_metadata.candidates_token_count
-        print(f"User prompt: {prompt}")
-        print(f"Prompt tokens: {prompt_tokens}")
-        print(f"Response tokens: {response_tokens}")
+        print("Prompt tokens:", response.usage_metadata.prompt_token_count)
+        print("Response tokens:", response.usage_metadata.candidates_token_count)
+
+    if not response.function_calls:
+        return response.text
+
+    function_responses = []
+    
+    for function_call_part in response.function_calls:
+        function_call_result = call_function(function_call_part, verbose)
+        if (
+            not function_call_result.parts
+            or not function_call_result.parts[0].function_response
+        ):
+            raise Exception("empty function call result")
+        if verbose:
+            print(f"-> {function_call_result.parts[0].function_response.response}")
+
+        function_responses.append(function_call_result.parts[0])
+
+    if not function_responses:
+        raise Exception("no function responses generated, exiting.")
 
 def main():
     """Main execution flow of the script."""
-    llm_model = "gemini-2.0-flash-001"
     user_prompt = parse_user_prompt()
     api_key = load_api_key()
     client = create_genai_client(api_key)
-    response = generate_gemini_response(client, llm_model, user_prompt)
-    print_response_info(response, user_prompt, verbose="--verbose" in sys.argv)
+
+    is_verbose : bool = "--verbose" in sys.argv
+    
+    generate_gemini_response(client, user_prompt, is_verbose)
 
 if __name__ == "__main__":
     main()

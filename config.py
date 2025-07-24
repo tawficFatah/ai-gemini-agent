@@ -1,4 +1,5 @@
 MAX_CHARS = 10000
+WORKING_DIR = "./calculator"
 
 SYSTEM_PROMPT = """
 You are an expert Software Developer and a helpful mentor.
