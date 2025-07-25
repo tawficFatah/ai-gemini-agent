@@ -2,7 +2,8 @@ import os, sys
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
-from config import SYSTEM_PROMPT
+from config import LOOP_MAX
+from prompts import SYSTEM_PROMPT
 
 from call_function import (call_function, available_functions)
 
@@ -65,7 +66,7 @@ def create_genai_client(api_key: str) -> genai.Client:
     """
     return genai.Client(api_key=api_key)
 
-def generate_gemini_response(client: genai.Client, user_prompt: str, verbose: bool):
+def generate_gemini_response(client: genai.Client, messages, verbose: bool):
     """Generates a response using the Gemini model for the given prompt.
 
     Args:
@@ -78,23 +79,27 @@ def generate_gemini_response(client: genai.Client, user_prompt: str, verbose: bo
     """
     llm_model = "gemini-2.0-flash-001"
 
-    messages = [types.Content(role="user", parts=[types.Part(text = user_prompt)])]
-
     response = client.models.generate_content(
         model       = llm_model,
         contents    = messages,
         config      = types.GenerateContentConfig(
-            tools = [available_functions], system_instruction = SYSTEM_PROMPT
-        ),
+                        tools = [available_functions], system_instruction = SYSTEM_PROMPT
+                      ),
     )
-
+    
     if verbose:
         print("Prompt tokens:", response.usage_metadata.prompt_token_count)
         print("Response tokens:", response.usage_metadata.candidates_token_count)
 
+    # Add response candidates to the conversation if they exist
+    if response.candidates:
+        for candidate in response.candidates:
+            function_call_content = candidate.content
+            messages.append(function_call_content)
+
     if not response.function_calls:
         return response.text
-
+    
     function_responses = []
     
     for function_call_part in response.function_calls:
@@ -102,8 +107,9 @@ def generate_gemini_response(client: genai.Client, user_prompt: str, verbose: bo
         if (
             not function_call_result.parts
             or not function_call_result.parts[0].function_response
-        ):
+           ):
             raise Exception("empty function call result")
+
         if verbose:
             print(f"-> {function_call_result.parts[0].function_response.response}")
 
@@ -112,15 +118,34 @@ def generate_gemini_response(client: genai.Client, user_prompt: str, verbose: bo
     if not function_responses:
         raise Exception("no function responses generated, exiting.")
 
+    messages.append(types.Content(role="tool", parts = function_responses))
+
 def main():
     """Main execution flow of the script."""
     user_prompt = parse_user_prompt()
     api_key = load_api_key()
     client = create_genai_client(api_key)
-
     is_verbose : bool = "--verbose" in sys.argv
+
+    messages = [types.Content(role="user", parts=[types.Part(text = user_prompt)])]
     
-    generate_gemini_response(client, user_prompt, is_verbose)
+    iterations = 0
+    
+    while True:
+        iterations += 1
+        if iterations > LOOP_MAX:
+            print(f"Maximum iterations ({LOOP_MAX}) reached.")
+            sys.exit(1)
+
+        try:
+            final_response = generate_gemini_response(client, messages, is_verbose)
+            
+            if final_response:
+                print("Final response:")
+                print(final_response)
+                break
+        except Exception as e:
+            print(f"Error in generate_content: {e}")
 
 if __name__ == "__main__":
     main()

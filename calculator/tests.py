@@ -24,6 +24,10 @@ class TestCalculator(unittest.TestCase):
         result = self.calculator.evaluate("10 / 2")
         self.assertEqual(result, 5)
 
+    def test_exponentiation(self):
+        result = self.calculator.evaluate("2 ** 3")
+        self.assertEqual(result, 8)
+
     def test_nested_expression(self):
         result = self.calculator.evaluate("3 * 4 + 5")
         self.assertEqual(result, 17)
